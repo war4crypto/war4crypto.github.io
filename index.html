@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CoinMarketCap API Key Tester</title>
+  <style>
+    body { font-family: Arial; margin: 40px; }
+    input, select, button { margin: 5px; padding: 8px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+  </style>
+</head>
+<body>
+
+<h2>🚀 CoinMarketCap API Key Tester</h2>
+
+<label>Enter Your API Key:</label><br>
+<input type="text" id="apiKey" placeholder="Enter your API key here" size="60"><br>
+
+<label>Select API Mode:</label><br>
+<select id="apiMode">
+  <option value="live">Live API</option>
+  <option value="sandbox">Sandbox API</option>
+</select><br>
+
+<button onclick="testAPI()">Run Test</button>
+
+<h3>📊 Response (Top 5 Cryptos):</h3>
+<table id="resultsTable">
+  <thead>
+    <tr><th>Name</th><th>Symbol</th><th>Price (USD)</th><th>Market Cap</th></tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+  async function testAPI() {
+    const key = document.getElementById("apiKey").value.trim();
+    const mode = document.getElementById("apiMode").value;
+    const domain = mode === "sandbox" ? "sandbox-api.coinmarketcap.com" : "pro-api.coinmarketcap.com";
+    const url = `https://${domain}/v1/cryptocurrency/listings/latest`;
+
+    const response = await fetch(url + "?limit=5&convert=USD", {
+      headers: {
+        "X-CMC_PRO_API_KEY": key
+      }
+    });
+
+    const data = await response.json();
+
+    const tbody = document.querySelector("#resultsTable tbody");
+    tbody.innerHTML = "";
+
+    if (data.data) {
+      data.data.forEach(coin => {
+        const row = `<tr>
+          <td>${coin.name}</td>
+          <td>${coin.symbol}</td>
+          <td>$${coin.quote.USD.price.toFixed(2)}</td>
+          <td>$${Number(coin.quote.USD.market_cap).toLocaleString()}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+    } else {
+      tbody.innerHTML = `<tr><td colspan="4">Error: ${data.status.error_message || "Unknown Error"}</td></tr>`;
+    }
+  }
+</script>
+
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zora on Base • On‑Chain Timing & Volume Explorer</title>
+  <style>
+    :root {
+      --bg: #0b0e13;
+      --panel: #121625;
+      --accent: #7aa2ff;
+      --text: #e6e9f0;
+      --muted: #9aa2b2;
+      --good: #42d392;
+      --warn: #ffcc66;
+      --bad: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+      line-height: 1.5;
+    }
+    header {
+      padding: 22px 20px 8px; border-bottom: 1px solid #1d2338;
+      background: linear-gradient(180deg, rgba(122,162,255,0.12), rgba(0,0,0,0) 60%);
+    }
+    h1 { margin: 0; font-size: 20px; letter-spacing: 0.3px; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+    main { padding: 16px; max-width: 1120px; margin: 0 auto; }
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+    .card {
+      background: var(--panel); border: 1px solid #1d2338; border-radius: 12px;
+      padding: 14px 14px 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+    }
+    h2 { margin: 4px 0 10px; font-size: 16px; }
+    label { font-size: 12px; color: var(--muted); display:block; margin-bottom: 6px; }
+    input, textarea, select, button {
+      width: 100%; padding: 10px 12px; border: 1px solid #2a3150; border-radius: 10px;
+      background: #0f1423; color: var(--text); font-size: 14px; outline: none;
+    }
+    textarea { min-height: 96px; resize: vertical; }
+    button {
+      background: linear-gradient(180deg, #2a4fff, #1f3cd1);
+      border: none; cursor: pointer; font-weight: 600; letter-spacing: .2px;
+    }
+    button.secondary { background: #1b223b; border: 1px solid #2a3150; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; background:#10162a; border:1px solid #253058; color:#c7d2ff }
+    .chart { width: 100%; height: 360px; }
+    .section-title { font-size: 13px; color: #8ea2ff; text-transform: uppercase; letter-spacing: 1px; margin: 6px 0 4px; }
+    a { color: var(--accent); text-decoration: none; }
+    .footer { color: var(--muted); font-size: 12px; margin-top: 20px; text-align:center }
+  </style>
+  <!-- Plotly for charts/heatmaps -->
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>⚡ Zora on Base — Timing & Volume Explorer</h1>
+  <div class="sub">Analyze Base network daily volume, contract‑level activity timing, and visualize “hot windows” with heatmaps.<br/>
+  Bring your own BaseScan API key.</div>
+</header>
+<main>
+  <div class="grid">
+    <div class="card">
+      <h2>1) API & Time Window</h2>
+      <label>BaseScan API Key</label>
+      <input id="apiKey" placeholder="Enter your BaseScan API key" />
+      <div class="row">
+        <div>
+          <label>Start date (YYYY-MM-DD)</label>
+          <input id="startDate" placeholder="2025-07-01" />
+        </div>
+        <div>
+          <label>End date (YYYY-MM-DD)</label>
+          <input id="endDate" placeholder="2025-08-15" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label>Timezone for bucketing</label>
+          <select id="tz">
+            <option value="UTC">UTC</option>
+            <option value="America/New_York">America/New_York (ET)</option>
+            <option value="America/Los_Angeles">America/Los_Angeles (PT)</option>
+            <option value="Europe/London">Europe/London</option>
+          </select>
+        </div>
+        <div>
+          <label>Aggregation granularity</label>
+          <select id="granularity">
+            <option value="hour">Hourly</option>
+            <option value="day">Daily</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint">Your key is only used in your browser to call <span class="mono">api.basescan.org</span>.</div>
+    </div>
+
+    <div class="card">
+      <h2>2) Zora Contracts on Base</h2>
+      <label>Contract addresses (comma/space/line separated)</label>
+      <textarea id="addresses" placeholder="0x..., 0x..., 0x..."></textarea>
+      <div class="row">
+        <button id="btnLoadContracts">Load Contract Activity</button>
+        <button id="btnClear" class="secondary">Clear Results</button>
+      </div>
+      <div class="hint">Don’t know the address? Use the finder below or search BaseScan.</div>
+    </div>
+
+    <div class="card">
+      <h2>3) Find Contract Addresses</h2>
+      <label>Quick search (opens BaseScan)</label>
+      <div class="row">
+        <input id="searchTerm" placeholder="e.g., Zora rewards, Zora mint" />
+        <button id="btnSearch" class="secondary">Search BaseScan</button>
+      </div>
+      <div class="hint">Tip: look for verified contracts and copy the <b>contract address</b> from the page.</div>
+      <div style="margin-top:10px">
+        <span class="pill">Helper</span>
+        <div class="hint">Once on BaseScan, use the <b>Transactions</b> or <b>Events</b> tab to confirm activity.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4) Network‑wide Daily Volume</h2>
+      <div class="row">
+        <button id="btnLoadNetwork">Load Daily Tx (Base)</button>
+        <button id="btnExportDaily" class="secondary">Export CSV</button>
+      </div>
+      <div id="dailyChart" class="chart"></div>
+      <div id="dailyMeta" class="hint"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Contract‑Level Timing & Heatmaps</div>
+  <div id="contractsContainer"></div>
+
+  <div class="footer">
+    Built for creators surf‑riding the algorithmic tide. Keep your key safe. Data courtesy of BaseScan (Etherscan‑compatible).
+  </div>
+</main>
+
+<script>
+// --- Utilities ---
+function $(id){ return document.getElementById(id); }
+function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+function uniq(arr){ return Array.from(new Set(arr)); }
+function cleanAddresses(text){
+  return uniq(text.split(/[\s,]+/).map(s=>s.trim()).filter(Boolean));
+}
+
+function toTZ(date, tz){
+  // Input: JS Date (UTC derived from unix), output: object with breakdown in target tz
+  return new Date(date.toLocaleString('en-US', { timeZone: tz }));
+}
+
+function ymd(d){ return d.toISOString().slice(0,10); }
+
+function csvEscape(v){
+  if(v==null) return '';
+  v = String(v);
+  if(v.includes(',') || v.includes('"') || v.includes('\n')){
+    return '"' + v.replace(/"/g,'""') + '"';
+  }
+  return v;
+}
+
+function downloadCSV(filename, rows){
+  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// --- BaseScan calls ---
+async function basescan(params){
+  const apiKey = $('apiKey').value.trim();
+  if(!apiKey) throw new Error('API key required');
+  const u = new URL('https://api.basescan.org/api');
+  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  u.searchParams.set('apikey', apiKey);
+  const r = await fetch(u);
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  if(j.status === "0" && j.message && j.message !== "No transactions found"){
+    throw new Error(j.result || j.message);
+  }
+  return j.result;
+}
+
+// 1) Network-wide daily volume
+async function loadDaily(){
+  const start = $('startDate').value.trim() || '2025-07-01';
+  const end = $('endDate').value.trim() || ymd(new Date());
+  const res = await basescan({
+    module:'stats', action:'dailytx',
+    startdate:start, enddate:end, sort:'asc'
+  });
+  // Result: array of {unixTime, date, txCount}
+  const xs = res.map(d => d.date);
+  const ys = res.map(d => +d.txCount);
+  Plotly.newPlot('dailyChart', [{
+    x: xs, y: ys, type:'scatter', mode:'lines+markers', name:'Daily Txs'
+  }], {
+    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    margin: {l:40,r:20,b:40,t:20},
+    xaxis: {gridcolor:'#1f2540'},
+    yaxis: {gridcolor:'#1f2540', title:'Transactions'}
+  }, {displayModeBar:false});
+
+  const sum = ys.reduce((a,b)=>a+b,0);
+  const avg = ys.length ? Math.round(sum/ys.length) : 0;
+  $('dailyMeta').innerText = `Range: ${start} → ${end} • Days: ${ys.length} • Total tx: ${sum.toLocaleString()} • Avg/day: ${avg.toLocaleString()}`;
+
+  // Save for export
+  window._dailyRows = [['date','txCount'], ...res.map(d => [d.date, d.txCount])];
+}
+
+function exportDaily(){
+  if(!window._dailyRows){ alert('Load daily first.'); return; }
+  downloadCSV('base_daily_tx.csv', window._dailyRows);
+}
+
+// 2) Contract address activity -> hourly & heatmap
+async function loadContract(address){
+  const tz = $('tz').value;
+  const gran = $('granularity').value; // hour/day
+  // We'll use account.txlist (ascending) and page through a few pages if needed
+  const container = document.createElement('div');
+  container.className = 'card';
+  container.innerHTML = `<h2>${address}</h2>
+    <div id="c_${address}_meta" class="hint">Fetching…</div>
+    <div id="c_${address}_line" class="chart"></div>
+    <div id="c_${address}_heat" class="chart"></div>`;
+  $('contractsContainer').appendChild(container);
+
+  let page = 1, offset = 10000, all = [];
+  const startDate = $('startDate').value.trim();
+  const endDate = $('endDate').value.trim();
+  const fromBlock = 0, toBlock = 99999999;
+  // Simple single page (most users) — for heavy use, loop pages and date-range chunking.
+  const res = await basescan({
+    module:'account', action:'txlist', address,
+    startblock: fromBlock, endblock: toBlock,
+    page, offset, sort:'asc'
+  });
+  all = Array.isArray(res) ? res : [];
+
+  // Filter by optional date range
+  let startTs = startDate ? Date.parse(startDate+"T00:00:00Z")/1000 : null;
+  let endTs = endDate ? Date.parse(endDate+"T23:59:59Z")/1000 : null;
+  const filtered = all.filter(t => {
+    const ts = +t.timeStamp;
+    if(startTs && ts < startTs) return false;
+    if(endTs && ts > endTs) return false;
+    return true;
+  });
+
+  // Aggregate
+  const byDay = new Map();
+  const byHour = new Map();
+  const matrix = Array.from({length:7}, ()=>Array(24).fill(0)); // weekday x hour
+
+  for(const tx of filtered){
+    const ts = +tx.timeStamp * 1000;
+    const local = toTZ(new Date(ts), tz);
+    const dKey = local.toISOString().slice(0,10);
+    const h = local.getHours();
+    const w = local.getDay(); // 0=Sun
+    byDay.set(dKey, (byDay.get(dKey)||0) + 1);
+    const hourKey = dKey + ' ' + String(h).padStart(2,'0') + ':00';
+    byHour.set(hourKey, (byHour.get(hourKey)||0) + 1);
+    matrix[w][h] += 1;
+  }
+
+  // Line: daily counts
+  const dayXs = Array.from(byDay.keys()).sort();
+  const dayYs = dayXs.map(k => byDay.get(k));
+  Plotly.newPlot(`c_${address}_line`, [{
+    x: dayXs, y: dayYs, type:'scatter', mode:'lines+markers', name:'Daily tx'
+  }], {
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    margin:{l:40,r:20,b:40,t:20},
+    xaxis:{gridcolor:'#1f2540'},
+    yaxis:{gridcolor:'#1f2540', title:'Tx per day'}
+  }, {displayModeBar:false});
+
+  // Heatmap: weekday x hour
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  Plotly.newPlot(`c_${address}_heat`, [{
+    z: matrix, x: Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00'),
+    y: days, type:'heatmap', colorscale:'Electric', reversescale:false
+  }], {
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    margin:{l:60,r:20,b:40,t:10},
+    xaxis:{title:'Hour ('+tz+')', gridcolor:'#1f2540'},
+    yaxis:{title:'Weekday', gridcolor:'#1f2540'}
+  }, {displayModeBar:false});
+
+  $(`c_${address}_meta`).innerText =
+    `Tx analyzed: ${filtered.length.toLocaleString()} • Window: ${startDate || '—'} → ${endDate || '—'} • TZ: ${tz}`;
+}
+
+// --- Event handlers ---
+$('btnLoadNetwork').addEventListener('click', async ()=>{
+  try{
+    await loadDaily();
+  }catch(e){ alert('Network daily fetch failed: '+e.message); }
+});
+$('btnExportDaily').addEventListener('click', ()=>exportDaily());
+
+$('btnLoadContracts').addEventListener('click', async ()=>{
+  $('contractsContainer').innerHTML = '';
+  const addrs = cleanAddresses($('addresses').value);
+  if(!addrs.length){ alert('Add at least one contract address.'); return; }
+  for(const a of addrs){
+    try{ await loadContract(a); }
+    catch(e){ const d=document.createElement('div'); d.className='card'; d.innerHTML = `<h2>${a}</h2><div class="hint" style="color:#ff9e9e">Error: ${e.message}</div>`; $('contractsContainer').appendChild(d); }
+    await sleep(200); // gentle pacing
+  }
+});
+
+$('btnClear').addEventListener('click', ()=>{
+  $('contractsContainer').innerHTML = '';
+  $('dailyChart').innerHTML = '';
+  $('dailyMeta').innerText = '';
+});
+
+$('btnSearch').addEventListener('click', ()=>{
+  const q = $('searchTerm').value.trim();
+  const url = q ? `https://basescan.org/search?q=${encodeURIComponent(q)}` : 'https://basescan.org/';
+  window.open(url, '_blank');
+});
+</script>
+</body>
+</html>
