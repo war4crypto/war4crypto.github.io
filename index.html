@@ -38,7 +38,7 @@
     const key = document.getElementById("apiKey").value.trim();
     const mode = document.getElementById("apiMode").value;
     const domain = mode === "sandbox" ? "sandbox-api.coinmarketcap.com" : "pro-api.coinmarketcap.com";
-    const url = `https://${domain}/v1/cryptocurrency/listings/latest`;
+    const url = `https://cors-anywhere.herokuapp.com/https://${domain}/v1/cryptocurrency/listings/latest`;
 
     const response = await fetch(url + "?limit=5&convert=USD", {
       headers: {
