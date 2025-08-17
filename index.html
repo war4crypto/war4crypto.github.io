@@ -2,18 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>CoinGecko API Dashboard</title>
+  <title>Crypto Dashboard - CoinGecko API</title>
   <style>
     body { font-family: Arial; padding: 20px; }
+    input, button { padding: 8px; margin: 5px 0; }
     table { border-collapse: collapse; width: 100%; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    input, button { padding: 8px; margin-top: 10px; }
+    canvas { margin-top: 30px; }
   </style>
 </head>
 <body>
 
-<h2>🚀 CoinGecko Live Market Viewer</h2>
-<button onclick="fetchCrypto()">Get Top 5 Cryptos</button>
+<h2>📈 CoinGecko Crypto Dashboard</h2>
+
+<label>Search Crypto:</label>
+<input type="text" id="searchInput" placeholder="e.g. bitcoin, ethereum" oninput="filterCrypto()">
+
+<button onclick="fetchCrypto()">🔄 Refresh Now</button>
+<p>⏱️ Auto-refreshes every 60 seconds</p>
 
 <table id="resultsTable">
   <thead>
@@ -22,25 +28,68 @@
   <tbody></tbody>
 </table>
 
+<canvas id="priceChart" width="800" height="400"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  async function fetchCrypto() {
-    const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1";
-    const res = await fetch(url);
-    const data = await res.json();
+let allData = [];
+let chart;
 
-    const tbody = document.querySelector("#resultsTable tbody");
-    tbody.innerHTML = "";
+async function fetchCrypto() {
+  const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10");
+  allData = await res.json();
+  displayTable(allData);
+  drawChart(allData);
+}
 
-    data.forEach(coin => {
-      const row = `<tr>
-        <td>${coin.name}</td>
-        <td>${coin.symbol.toUpperCase()}</td>
-        <td>$${coin.current_price.toFixed(2)}</td>
-        <td>$${coin.market_cap.toLocaleString()}</td>
-      </tr>`;
-      tbody.innerHTML += row;
-    });
-  }
+function displayTable(data) {
+  const tbody = document.querySelector("#resultsTable tbody");
+  tbody.innerHTML = "";
+  data.forEach(coin => {
+    const row = `<tr>
+      <td>${coin.name}</td>
+      <td>${coin.symbol.toUpperCase()}</td>
+      <td>$${coin.current_price.toFixed(2)}</td>
+      <td>$${coin.market_cap.toLocaleString()}</td>
+    </tr>`;
+    tbody.innerHTML += row;
+  });
+}
+
+function filterCrypto() {
+  const q = document.getElementById("searchInput").value.toLowerCase();
+  const filtered = allData.filter(c => c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q));
+  displayTable(filtered);
+  drawChart(filtered);
+}
+
+function drawChart(data) {
+  const labels = data.map(c => c.name);
+  const prices = data.map(c => c.current_price);
+
+  if (chart) chart.destroy();
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Price (USD)',
+        data: prices,
+        fill: false,
+        borderColor: 'blue',
+        tension: 0.1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true } }
+    }
+  });
+}
+
+fetchCrypto();
+setInterval(fetchCrypto, 60000);  // Refresh every 60 seconds
 </script>
 
 </body>
